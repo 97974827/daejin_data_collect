@@ -5657,12 +5657,12 @@ class Pos:
     선택 데이터를 기존 이력 테이블에 추가하고 삭제 이력테이블에서 삭제한다.  
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     def restore_select_device_data(self, args):
-        # print(args)
+        print(args)
         device_type = str(args['device_type'])
         addr = str(args['device_addr'])
         start_time = str(self.setStringDateToTimeStamp(args['start_time']))
         end_time = str(self.setStringDateToTimeStamp(args['end_time']))
-        delete_time = str(args['delete_time'])
+        delete_time = str(self.setStringDateToTimeStamp(args['delete_time']))
         cash = str(int(args['cash']) // 100).rjust(4, '0')
         card = str(int(args['card']) // 100).rjust(4, '0')
         remain_card = str(int(args['remain_card']) // 100).rjust(5, '0')
@@ -5671,18 +5671,11 @@ class Pos:
         # 타임스탬프 변환처리
         start_time = self.setTimeStampToString(start_time)
         end_time = self.setTimeStampToString(end_time)
-        delete_time = self.setTimeStampToString(delete_time)
-
-        # type str
-        # print(device_type)
-        # print(addr)
-        # print(start_time)
-        # # # print(type(start_time))
+        # delete_time = int(delete_time)
+        # delete_time = datetime.fromtimestamp(int(delete_time)).strftime('%Y-%m-%d %H:%M:%S')
         # print(end_time)
-        # print(cash)
-        # print(card)
-        # print(remain_card)
-        # print(card_num)
+        # print(delete_time)
+        delete_time = self.setTimeStampToString(delete_time)
 
         try:
             self.openConnectDB()
@@ -5738,35 +5731,38 @@ class Pos:
                     elif device_type == str(gls_config.READER):
                         reader_select_query = "SELECT t_self.`no`, t_list.`type` AS 'device_type', `device_addr`, " \
                                               "UNIX_TIMESTAMP(`start_time`) AS 'start_time', " \
-                                              "UNIX_TIMESTAMP(`end_time`) AS 'end_time', `reader_time` * 100 AS 'time', " \
-                                              "`reader_cash` * 100 AS 'cash', `reader_card` * 100 AS 'card', `remain_card` * 100 AS 'remain_card', `card_num` " \
+                                              "UNIX_TIMESTAMP(`end_time`) AS 'end_time', " \
+                                              "UNIX_TIMESTAMP(`delete_time`) AS 'delete_time', `reader_time` * 100 AS 'time', " \
+                                              "`reader_cash` * 100 AS 'cash', `reader_card` * 100 AS 'card', `remain_card` * 100 AS 'remain_card', " \
+                                              "`master_card` * 100 AS 'master', `card_num` " \
                                               "FROM gl_delete_reader_state AS t_self " \
                                               "INNER join gl_device_list AS t_list ON t_self.device_addr = t_list.addr " \
                                               "WHERE t_list.`type` = %s AND t_self.`device_addr` = %s " \
-                                              "AND start_time = %s AND end_time = %s " \
+                                              "AND start_time = %s AND end_time = %s AND delete_time = %s " \
                                               "AND `reader_cash` = %s AND `reader_card` = %s AND `remain_card` = %s AND `card_num` = %s"
                         curs.execute(reader_select_query,
-                                     (device_type, addr, start_time, end_time, cash, card, remain_card, card_num))
-                        row = curs.fetchone()
+                                     (device_type, addr, start_time, end_time, delete_time, cash, card, remain_card, card_num))
+                        rows = curs.fetchone()
 
-                        device_no = row['no']
-                        time = str(int(row['time'])).rjust(4, "0")
+                        device_no = rows['no']
+                        time = str(int(rows['time'])).rjust(4, "0")
+                        master_card = str(int(rows['master']) // 100).rjust(4, "0")
 
                         # 삭제 테이블 이력추가
                         query_delete_reader_state_insert = "INSERT INTO gl_reader_state " \
-                                                           "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                                                           "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
                         curs.execute(query_delete_reader_state_insert,
                                      (device_no, addr, card_num, time, cash, card,
-                                      remain_card, master_card, start_time, end_time, delete_time))
+                                      remain_card, master_card, start_time, end_time))
 
                         # 선택 이력 삭제
                         query_reader_state_delete = "DELETE FROM gl_delete_reader_state " \
                                                     "WHERE `device_addr` = %s " \
-                                                    "AND start_time = %s AND end_time = %s " \
+                                                    "AND start_time = %s AND end_time = %s AND delete_time = %s " \
                                                     "AND `reader_cash` = %s AND `reader_card` = %s AND `remain_card` = %s " \
                                                     "AND `master_card` = %s AND `card_num` = %s"
                         curs.execute(query_reader_state_delete,
-                                     (addr, start_time, end_time, cash, card, remain_card, master_card, card_num))
+                                     (addr, start_time, end_time, delete_time, cash, card, remain_card, master_card, card_num))
 
                 self.db_connect.commit()
                 result = 1  # 반환값 : 성공
@@ -5783,7 +5779,7 @@ class Pos:
     장비 타입/주소, 사용일자, 삭제일자, 투입금액, 보너스, 총 충전액, 총 카드금액, 카드번호 넘겨받음
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     def restore_select_charger_data(self, args):
-        # print(args)
+        print(args)
         device_type = str(args['device_type'])
         device_addr = str(args['device_addr'])
         input_date = str(self.setStringDateToTimeStamp(args['input_date']))
@@ -5941,10 +5937,10 @@ class Pos:
                                               "FROM gl_delete_reader_state AS t_self " \
                                               "INNER join gl_device_list AS t_list ON t_self.device_addr = t_list.addr " \
                                               "WHERE t_list.`type` = %s AND t_self.`device_addr` = %s " \
-                                              "AND start_time = %s AND end_time = %s " \
+                                              "AND start_time = %s AND end_time = %s AND delete_time = %s " \
                                               "AND `reader_cash` = %s AND `reader_card` = %s AND `remain_card` = %s AND `card_num` = %s"
                         curs.execute(reader_select_query,
-                                     (device_type, addr, start_time, end_time, cash, card, remain_card, card_num))
+                                     (device_type, addr, start_time, end_time, delete_time, cash, card, remain_card, card_num))
                         row = curs.fetchone()
 
                         # 선택 이력 삭제

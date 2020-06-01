@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="f2bd038d-a779-4d37-825e-6a80f65b958e" name="DC">
+        <fileTransfer accessType="SFTP" host="glstest.iptime.org" port="22222" sshConfigId="77a7f5de-ea66-4d99-bb5d-8b41281061d4" sshConfig="root@glstest.iptime.org:22222 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
